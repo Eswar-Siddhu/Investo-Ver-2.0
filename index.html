@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Investo Family Portfolio</title>
+    <!-- Tailwind CSS with Dark Mode Config -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', }
+    </script>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-tap-highlight-color: transparent; }
+        .fade-in { animation: fadeIn 0.25s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Standard Data Tables */
+        .data-table th, .data-table td { white-space: nowrap; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; transition: background-color 0.2s, color 0.2s, border-color 0.2s; }
+        .data-table th { background-color: #f8fafc; font-weight: 600; text-align: left; font-size: 0.85em; color: #475569; position: sticky; top: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer; user-select: none; }
+        .data-table th:hover { background-color: #f1f5f9; color: #1e293b; }
+        .data-table td { font-size: 0.9em; color: #1e293b; }
+        .data-table tr:hover { background-color: #f1f5f9; }
+        
+        /* Top Level Summary Tables (Aesthetically Highlighted) */
+        .summary-table td { padding: 12px 16px; border-bottom: 1px solid rgba(99, 102, 241, 0.15); color: #1e3a8a; font-weight: 600; font-size: 0.9em; }
+        .summary-table tr:last-child td { border-bottom: none; }
+
+        /* Dark Mode Overrides */
+        .dark .data-table th { background-color: #1e293b; color: #94a3b8; border-bottom-color: #334155; box-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        .dark .data-table th:hover { background-color: #334155; color: #e2e8f0; }
+        .dark .data-table td { color: #cbd5e1; border-bottom-color: #334155; }
+        .dark .data-table tr:hover { background-color: #334155; }
+        
+        .dark .summary-table td { border-bottom: 1px solid rgba(99, 102, 241, 0.25); color: #c7d2fe; }
+
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #2563eb; cursor: pointer; margin-top: -8px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #e2e8f0; border-radius: 4px; }
+        .dark input[type=range]::-webkit-slider-runnable-track { background: #475569; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 antialiased pb-24 transition-colors duration-300">
+
+    <!-- Dark Mode Toggle Button -->
+    <button onclick="toggleDarkMode()" class="fixed top-4 right-4 z-[60] p-2.5 rounded-full bg-white/50 backdrop-blur-md shadow-sm border border-white/40 text-slate-700 dark:text-slate-200 dark:bg-slate-800/60 dark:border-slate-700 hover:scale-105 active:scale-95 transition cursor-pointer">
+        <svg id="icon-sun" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+        <svg id="icon-moon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+    </button>
+
+    <!-- Screen 0: Upload -->
+    <div id="upload-screen" class="flex flex-col items-center justify-center min-h-screen p-6 fade-in">
+        <div class="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl w-full max-w-sm text-center border border-slate-100 dark:border-slate-700 transition-colors">
+            <h1 class="text-4xl font-extrabold mb-2 text-blue-700 dark:text-blue-500 tracking-tight">Investo</h1>
+            <p class="text-slate-500 dark:text-slate-400 mb-8 text-sm font-medium">Fast Offline Tracker</p>
+            
+            <label for="file-upload" id="upload-btn" class="block w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-xl shadow-md text-lg font-bold cursor-pointer active:scale-95 transition-transform">
+                Select Investo.xlsx
+            </label>
+            <input id="file-upload" type="file" accept=".xlsx" class="hidden" />
+            <p id="loading-text" class="hidden mt-4 text-sm text-blue-600 dark:text-blue-400 font-semibold animate-pulse">Mapping Data Coordinates...</p>
+        </div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav id="bottom-nav" class="hidden fixed bottom-0 w-full bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-around p-3 z-50 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] transition-colors">
+        <button onclick="switchTab('master-screen')" id="nav-dash" class="flex flex-col items-center text-blue-600 dark:text-blue-400 font-bold active:scale-95 transition">
+            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+            <span class="text-xs">Dashboard</span>
+        </button>
+        <button onclick="switchTab('goal-screen')" id="nav-goal" class="flex flex-col items-center text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 active:scale-95 transition">
+            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+            <span class="text-xs">Goal Planner</span>
+        </button>
+    </nav>
+
+    <!-- Screen 1: Dashboard -->
+    <div id="master-screen" class="hidden fade-in">
+        <div class="bg-blue-700 dark:bg-blue-900 text-white px-6 pt-10 pb-6 rounded-b-3xl shadow-lg relative transition-colors">
+            <div class="flex flex-col">
+                <h2 class="text-2xl font-extrabold tracking-tight" id="dash-title">Overall Portfolio</h2>
+                <p class="text-blue-200 dark:text-blue-300 text-sm mt-3 font-medium">Total Net Worth</p>
+                <h3 class="text-4xl font-extrabold mt-0.5 tracking-tight">₹<span id="dash-worth">0</span></h3>
+                
+                <div class="mt-4">
+                    <div class="bg-blue-800 dark:bg-blue-950 rounded-lg p-1 inline-flex shadow-inner">
+                        <button id="btn-combined" onclick="toggleView('combined')" class="px-5 py-1.5 text-sm rounded-md bg-white text-blue-800 font-bold shadow transition">All</button>
+                        <button id="btn-nivedha" onclick="toggleView('nivedha')" class="px-5 py-1.5 text-sm rounded-md text-blue-200 font-semibold transition">Nivedha</button>
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-8 mt-6 pt-5 border-t border-blue-600/60 dark:border-blue-700/60">
+                <div id="invested-block">
+                    <p class="text-[11px] text-blue-200 dark:text-blue-300 uppercase tracking-widest font-bold">Invested</p>
+                    <p class="font-bold text-lg mt-0.5" id="dash-invested">₹0</p>
+                </div>
+                <div>
+                    <p class="text-[11px] text-blue-200 dark:text-blue-300 uppercase tracking-widest font-bold">Overall XIRR</p>
+                    <p class="font-bold text-lg text-emerald-300 dark:text-emerald-400 mt-0.5"><span id="dash-xirr">0</span></p>
+                </div>
+            </div>
+        </div>
+
+        <div id="charts-container" class="grid grid-cols-2 gap-4 mt-6 px-4">
+            <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center transition-colors col-span-2" id="chart-wrapper-eq">
+                <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Asset Split</h4>
+                <div class="w-full h-32 relative"><canvas id="equity-debt-chart"></canvas></div>
+            </div>
+            <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center transition-colors" id="chart-wrapper-lq">
+                <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Liquidity</h4>
+                <div class="w-full h-32 relative"><canvas id="liquidity-chart"></canvas></div>
+            </div>
+            <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col items-center transition-colors" id="chart-wrapper-ps">
+                <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Ownership</h4>
+                <div class="w-full h-32 relative"><canvas id="person-split-chart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="px-4 mt-6">
+            <h3 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 ml-1">Asset Allocation</h3>
+            <div id="category-grid" class="flex flex-col gap-3"></div>
+        </div>
+
+        <p id="file-date" class="text-center text-[10px] font-semibold text-slate-400 dark:text-slate-500 mt-8 mb-4"></p>
+    </div>
+
+    <!-- Screen 2: Data Tables -->
+    <div id="table-screen" class="hidden min-h-screen bg-slate-50 dark:bg-slate-900 flex-col fade-in transition-colors">
+        <div class="flex items-center p-4 bg-white dark:bg-slate-800 shadow-sm sticky top-0 z-20 border-b border-slate-100 dark:border-slate-700 transition-colors">
+            <button onclick="switchTab('master-screen')" class="p-2 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-600 dark:text-slate-300 active:bg-slate-200 dark:active:bg-slate-600 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+            <h2 id="table-title" class="text-xl font-bold ml-3 text-slate-800 dark:text-slate-100 tracking-tight">Category Details</h2>
+        </div>
+        <div id="tables-container" class="px-4 mt-5 flex flex-col gap-8 pb-10"></div>
+    </div>
+
+    <!-- Screen 3: Goal Planner -->
+    <div id="goal-screen" class="hidden fade-in min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors">
+        <div class="bg-white dark:bg-slate-800 p-6 shadow-sm sticky top-0 z-10 border-b border-slate-100 dark:border-slate-700 transition-colors">
+            <h2 class="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight mt-2">Goal Planner</h2>
+            <p class="text-slate-500 dark:text-slate-400 text-sm mt-1 font-medium">Project your corpus growth</p>
+        </div>
+        
+        <div class="p-4 flex flex-col gap-5">
+            <div class="bg-gradient-to-br from-indigo-600 to-blue-600 dark:from-indigo-800 dark:to-blue-800 p-6 rounded-2xl shadow-lg text-white text-center transition-colors">
+                <p class="text-indigo-200 text-[11px] uppercase tracking-widest font-bold">Time to Reach Goal</p>
+                <h3 id="goal-result" class="text-3xl font-extrabold mt-1 tracking-tight">-- Years</h3>
+                <p id="goal-date" class="text-indigo-100 text-sm mt-1 font-medium">--</p>
+            </div>
+            
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col gap-6 transition-colors">
+                <div>
+                    <div class="flex justify-between mb-2"><label class="text-sm font-bold text-slate-700 dark:text-slate-300">Target Goal (₹)</label><input type="number" id="in-target" value="10000000" class="w-24 text-right bg-slate-100 dark:bg-slate-700 dark:text-white rounded px-2 py-1 text-sm font-bold text-slate-800 focus:outline-none transition-colors" oninput="sync('target', this.value)"></div>
+                    <input type="range" id="sl-target" min="100000" max="50000000" step="100000" value="10000000" oninput="sync('target', this.value)">
+                </div>
+                <div>
+                    <div class="flex justify-between mb-2"><label class="text-sm font-bold text-slate-700 dark:text-slate-300">Current Corpus (₹)</label><input type="number" id="in-corpus" value="0" class="w-24 text-right bg-slate-100 dark:bg-slate-700 dark:text-white rounded px-2 py-1 text-sm font-bold text-slate-800 focus:outline-none transition-colors" oninput="sync('corpus', this.value)"></div>
+                    <input type="range" id="sl-corpus" min="0" max="20000000" step="10000" value="0" oninput="sync('corpus', this.value)">
+                </div>
+                <div>
+                    <div class="flex justify-between mb-2"><label class="text-sm font-bold text-slate-700 dark:text-slate-300">Monthly SIP (₹)</label><input type="number" id="in-sip" value="50000" class="w-24 text-right bg-slate-100 dark:bg-slate-700 dark:text-white rounded px-2 py-1 text-sm font-bold text-slate-800 focus:outline-none transition-colors" oninput="sync('sip', this.value)"></div>
+                    <input type="range" id="sl-sip" min="0" max="500000" step="1000" value="50000" oninput="sync('sip', this.value)">
+                </div>
+                <div>
+                    <div class="flex justify-between mb-2"><label class="text-sm font-bold text-slate-700 dark:text-slate-300">Expected Return (%)</label><input type="number" id="in-rate" value="12" class="w-16 text-right bg-slate-100 dark:bg-slate-700 dark:text-white rounded px-2 py-1 text-sm font-bold text-slate-800 focus:outline-none transition-colors" oninput="sync('rate', this.value)"></div>
+                    <input type="range" id="sl-rate" min="1" max="30" step="0.5" value="12" oninput="sync('rate', this.value)">
+                </div>
+                <div>
+                    <div class="flex justify-between mb-2"><label class="text-sm font-bold text-slate-700 dark:text-slate-300">Annual Step-up (%)</label><input type="number" id="in-stepup" value="10" class="w-16 text-right bg-slate-100 dark:bg-slate-700 dark:text-white rounded px-2 py-1 text-sm font-bold text-slate-800 focus:outline-none transition-colors" oninput="sync('stepup', this.value)"></div>
+                    <input type="range" id="sl-stepup" min="0" max="50" step="1" value="10" oninput="sync('stepup', this.value)">
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col gap-4 mt-2 transition-colors">
+                <h3 class="font-bold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest border-l-4 border-emerald-500 pl-2">Portfolio Insights</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Current XIRR</p>
+                        <p class="text-sm font-extrabold text-emerald-600 dark:text-emerald-400" id="note-xirr">--</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Prev Month Inv.</p>
+                        <p class="text-sm font-extrabold text-slate-700 dark:text-slate-200" id="note-prev-month">--</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Avg Inv (3M)</p>
+                        <p class="text-sm font-extrabold text-indigo-600 dark:text-indigo-400" id="note-3m">--</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Avg Inv (6M)</p>
+                        <p class="text-sm font-extrabold text-indigo-600 dark:text-indigo-400" id="note-6m">--</p>
+                    </div>
+                    <div class="col-span-2 flex justify-between border-t border-slate-100 dark:border-slate-700 pt-3">
+                        <div>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Avg Inv (12M)</p>
+                            <p class="text-sm font-extrabold text-indigo-600 dark:text-indigo-400" id="note-12m">--</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">YTD Inv. Growth</p>
+                            <p class="text-sm font-extrabold text-slate-700 dark:text-slate-200">Increased by <span id="note-ytd" class="text-blue-600 dark:text-blue-400">--</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Default to Light Mode (Removed OS auto-check)
+        function toggleDarkMode() { document.documentElement.classList.toggle('dark'); }
+
+        // Asset Styling Map
+        function getAssetIconStyles(name) {
+            let n = name.toLowerCase();
+            if(n.includes('fund')) return 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400';
+            if(n.includes('stock')) return 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400';
+            if(n.includes('bond') || n.includes('gold')) return 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400';
+            if(n.includes('deposit') || n.includes('rd') || n.includes('fd')) return 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400';
+            if(n.includes('epf') || n.includes('ppf') || n.includes('nps') || n.includes('yojna')) return 'bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400';
+            if(n.includes('crypto')) return 'bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400';
+            return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+        }
+
+        // 1. Data Dictionary Map
+        const tableDefs = [
+            { s: "Master", n: "Master", c: "B16", r: 14, col: 6, h: true },
+            { s: "Master", n: "Person_Split", c: "S8", r: 4, col: 8, h: true },
+            { s: "Master", n: "Prop_Split", c: "S2", r: 3, col: 3, h: true },
+            { s: "Mutual Fund_SIP", n: "MF_SIP", c: "D4", r: 5, col: 2, h: false },
+            { s: "Mutual Fund_SIP", n: "MF_SIP_M", c: "A13", r: 16, col: 8, h: true },
+            { s: "Mutual Fund_SIP", n: "MF_SIP_List", c: "J13", r: -1, col: 13, h: true }, 
+            { s: "Mutual Fund_SIP", n: "MF_Growth", c: "AB1", r: -1, col: 7, h: true },
+            { s: "Mutual Fund_LS", n: "MF_LS", c: "F4", r: 5, col: 3, h: false },
+            { s: "Mutual Fund_LS", n: "MF_LS_M", c: "A11", r: -1, col: 15, h: true },
+            { s: "FD", n: "FD", c: "F4", r: 5, col: 3, h: false },
+            { s: "FD", n: "FD_M", c: "B11", r: -1, col: 12, h: true },
+            { s: "RD", n: "RD", c: "C4", r: 5, col: 3, h: false },
+            { s: "RD", n: "RD_M", c: "B11", r: -1, col: 7, h: true },
+            { s: "PPF", n: "PPF", c: "C4", r: 5, col: 3, h: false },
+            { s: "PPF", n: "PPF_M", c: "B11", r: -1, col: 7, h: true },
+            { s: "NPS", n: "NPS", c: "D4", r: 5, col: 2, h: false },
+            { s: "NPS", n: "NPS_M", c: "B13", r: 4, col: 4, h: true }, 
+            { s: "NPS", n: "NPS_List", c: "J13", r: -1, col: 13, h: true },
+            { s: "GMB Insurance", n: "GMB", c: "F4", r: 5, col: 3, h: false },
+            { s: "GMB Insurance", n: "GMB_M", c: "B11", r: 3, col: 13, h: true },
+            { s: "EPF", n: "EPF", c: "C4", r: 5, col: 2, h: false },
+            { s: "EPF", n: "EPF_M", c: "B11", r: -1, col: 4, h: true },
+            { s: "EPF", n: "EPF_M_L", c: "K11", r: -1, col: 16, h: true },
+            { s: "APY", n: "APY", c: "C3", r: 5, col: 3, h: false },
+            { s: "APY", n: "APY_M", c: "B11", r: -1, col: 5, h: true },
+            { s: "Stocks", n: "Stock", c: "C4", r: 5, col: 2, h: false },
+            { s: "Stocks", n: "Stock_M", c: "B11", r: -1, col: 25, h: true },
+            { s: "Bonds", n: "Bond", c: "C4", r: 5, col: 3, h: false },
+            { s: "Bonds", n: "Bond_M", c: "B11", r: -1, col: 18, h: true },
+            { s: "Crypto", n: "Crypto", c: "D4", r: 7, col: 3, h: false },
+            { s: "Crypto", n: "Crypto_M", c: "B14", r: -1, col: 7, h: true },
+            { s: "Crypto", n: "Crypto_L", c: "K14", r: -1, col: 8, h: true }
+        ];
+
+        let extractedData = {};
+        let viewMode = 'combined'; 
+        let dashCharts = {}; 
+        let detailCharts = {};
+        let globalMFPts = [];
+
+        function getCoords(cellId) {
+            let match = cellId.match(/([a-zA-Z]+)(\d+)/);
+            let colStr = match[1].toUpperCase(); let idx = 0;
+            for(let i=0; i<colStr.length; i++){ idx = idx * 26 + (colStr.charCodeAt(i) - 64); }
+            return { c: idx - 1, r: parseInt(match[2]) - 1 };
+        }
+
+        function cleanNum(v) { return (isNaN(parseFloat(v)) || v === "") ? 0 : parseFloat(v); }
+        function fmtC(n) { return Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
+        function fmtP(n) { return (Number(n) * 100).toFixed(2); }
+
+        function extractSummInv(sheetName, tableName) {
+            let sData = extractedData[sheetName]?.[tableName];
+            if(!sData) return 0;
+            for(let r of sData.rows) {
+                let idx = r.findIndex(c => String(c).toLowerCase().includes('amount invested'));
+                if(idx !== -1) {
+                    for(let i = idx+1; i < r.length; i++) {
+                        let n = cleanNum(r[i]); if(n > 0) return n;
+                    }
+                }
+            } return 0;
+        }
+
+        // 2. High-Speed File Upload & Extraction
+        document.getElementById('file-upload').addEventListener('change', function(e) {
+            let file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('upload-btn').classList.add('hidden');
+            document.getElementById('loading-text').classList.remove('hidden');
+
+            let reader = new FileReader();
+            reader.onload = function(event) {
+                let wb = XLSX.read(new Uint8Array(event.target.result), {type: 'array', raw: true});
+                extractedData = {};
+
+                wb.SheetNames.forEach(sheet => {
+                    let matrix = XLSX.utils.sheet_to_json(wb.Sheets[sheet], {header: 1, raw: true, defval: ""});
+                    extractedData[sheet] = {};
+
+                    let sheetDefs = tableDefs.filter(d => d.s === sheet);
+                    sheetDefs.forEach(def => {
+                        let coord = getCoords(def.c); let limit = def.r;
+                        if (limit === -1) {
+                            limit = 0;
+                            while(coord.r + limit < matrix.length) {
+                                let rowHasData = false;
+                                for(let k=0; k<def.col; k++){
+                                    let v = matrix[coord.r + limit][coord.c + k];
+                                    if(v !== undefined && v !== null && String(v).trim() !== "") { rowHasData = true; break; }
+                                }
+                                if(!rowHasData) break; limit++;
+                            }
+                        }
+
+                        let headers = []; let rows = [];
+                        for(let i=0; i<limit; i++) {
+                            let rowIndex = coord.r + i; if(rowIndex >= matrix.length) break;
+                            let rData = [];
+                            for(let j=0; j<def.col; j++) { rData.push(matrix[rowIndex][coord.c + j]); }
+                            if(def.h && i === 0) headers = rData; else rows.push(rData);
+                        }
+
+                        extractedData[sheet][def.n] = { headers, rows, hideCols: [] };
+                        
+                        if(def.n === 'MF_SIP_M' || def.n === 'MF_LS_M') extractedData[sheet][def.n].hideCols = [0];
+                        if(def.n === 'Stock_M') {
+                            let t = extractedData[sheet][def.n]; t.hideCols = [24];
+                            if(t.headers.length > 24) { t.headers[1] = 'Name'; t.rows.forEach(r => r[1] = r[24]); }
+                        }
+                    });
+                });
+
+                document.getElementById('file-date').innerText = "Last Saved: " + new Date(file.lastModified).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+
+                document.getElementById('upload-screen').classList.add('hidden');
+                document.getElementById('bottom-nav').classList.remove('hidden');
+                document.getElementById('bottom-nav').classList.add('flex');
+                
+                renderView();
+                calcGoal();
+                calculatePortfolioStats();
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        // 3. View Logic & Dashboard Engine
+        function toggleView(mode) {
+            viewMode = mode;
+            let actClass = "px-5 py-1.5 text-sm rounded-md bg-white dark:bg-slate-700 text-blue-800 dark:text-blue-300 font-bold shadow transition";
+            let inactClass = "px-5 py-1.5 text-sm rounded-md text-blue-200 dark:text-blue-400 font-semibold transition";
+            
+            document.getElementById('btn-combined').className = mode === 'combined' ? actClass : inactClass;
+            document.getElementById('btn-nivedha').className = mode === 'nivedha' ? actClass : inactClass;
+            
+            document.getElementById('dash-title').innerText = mode === 'combined' ? "Overall Portfolio" : "Nivedha's Portfolio";
+            renderView();
+        }
+
+        function renderView() {
+            switchTab('master-screen');
+            let grid = document.getElementById('category-grid');
+            grid.innerHTML = '';
+            let worth = 0, invested = 0, xirr = 0;
+
+            if(viewMode === 'combined') {
+                let mTable = extractedData["Master"]["Master"];
+                if(!mTable) return;
+
+                mTable.rows.forEach(r => {
+                    let catName = String(r[1]).trim();
+                    if(!catName || catName.toLowerCase() === 'total') {
+                        if(catName.toLowerCase() === 'total') { invested = cleanNum(r[2]); worth = cleanNum(r[3]); xirr = cleanNum(r[5]); }
+                        return;
+                    }
+                    let cVal = cleanNum(r[3]);
+                    if(cVal === 0) return;
+                    grid.innerHTML += buildCard(catName, cleanNum(r[2]), cVal, cleanNum(r[5]), [getMappedSheet(catName)]);
+                });
+                document.getElementById('dash-invested').innerText = `₹${fmtC(invested)}`;
+                drawAnalyticsCharts(false);
+                
+            } else {
+                let pTable = extractedData["Master"]["Person_Split"];
+                if(!pTable) return;
+                let nRow = pTable.rows.find(r => String(r[0]).toUpperCase().includes('NIVEDHA'));
+                if(nRow) {
+                    worth = cleanNum(nRow[6]); xirr = cleanNum(nRow[7]);
+
+                    // Nivedha Invested Calculation
+                    let nInvSum = 0;
+                    nInvSum += extractSummInv('Bonds', 'Bond');
+                    nInvSum += extractSummInv('RD', 'RD');
+                    nInvSum += extractSummInv('Stocks', 'Stock');
+                    
+                    let sipM = extractedData['Mutual Fund_SIP']?.['MF_SIP_M'];
+                    if(sipM) {
+                        let invIdx = sipM.headers.findIndex(h => String(h).toLowerCase().includes('investment'));
+                        if (invIdx === -1) invIdx = 4;
+                        sipM.rows.forEach(r => { if(String(r[0]).toUpperCase().startsWith('NIV')) nInvSum += cleanNum(r[invIdx]); });
+                    }
+                    invested = nInvSum;
+                    document.getElementById('dash-invested').innerText = `₹${fmtC(invested)}`;
+
+                    let cats = [
+                        {n: "Mutual Funds", v: cleanNum(nRow[1]), s: ["Mutual Fund_SIP"]}, 
+                        {n: "Bonds", v: cleanNum(nRow[2]), s: ["Bonds"]},
+                        {n: "Recurring deposit", v: cleanNum(nRow[3]), s: ["RD"]},
+                        {n: "Stocks", v: cleanNum(nRow[4]), s: ["Stocks"]}
+                    ];
+                    
+                    let mTable = extractedData["Master"]["Master"];
+
+                    cats.forEach(c => {
+                        if(c.v > 0) {
+                            let catXirr = 0;
+                            if (c.n === "Bonds" || c.n === "Recurring deposit" || c.n === "Stocks") {
+                                if(mTable) {
+                                    let mRow = mTable.rows.find(r => String(r[1]).trim().toLowerCase() === c.n.toLowerCase());
+                                    if(mRow) catXirr = cleanNum(mRow[5]);
+                                }
+                            } else if (c.n === "Mutual Funds" && sipM) {
+                                let tNivVal = 0, wXirrSum = 0;
+                                sipM.rows.forEach(r => {
+                                    if(String(r[0]).toUpperCase().startsWith('NIV')) {
+                                        let vNow = cleanNum(r[5]); let x = cleanNum(r[6]);
+                                        tNivVal += vNow; wXirrSum += (vNow * x);
+                                    }
+                                });
+                                if(tNivVal > 0) catXirr = wXirrSum / tNivVal;
+                            }
+                            grid.innerHTML += buildCard(c.n, null, c.v, catXirr, c.s);
+                        }
+                    });
+                }
+                drawAnalyticsCharts(true);
+            }
+
+            document.getElementById('dash-worth').innerText = fmtC(worth);
+            document.getElementById('dash-xirr').innerText = xirr !== 0 ? fmtP(xirr) + '%' : '--';
+            if(worth > 0) sync('corpus', Math.round(worth));
+        }
+
+        function drawAnalyticsCharts(isNivedhaView) {
+            let chartOpts = { 
+                responsive: true, maintainAspectRatio: false, 
+                plugins: { 
+                    legend: { position: 'bottom', labels: { boxWidth: 10, font: {size: 10} } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                let total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                let percentage = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
+                                return `${ctx.label}: ₹${fmtC(ctx.parsed)} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }, 
+                cutout: '70%' 
+            };
+
+            if(dashCharts.eq) dashCharts.eq.destroy();
+            if(dashCharts.ps) dashCharts.ps.destroy();
+            if(dashCharts.lq) dashCharts.lq.destroy();
+
+            if (!isNivedhaView) {
+                document.getElementById('chart-wrapper-ps').style.display = 'flex';
+                document.getElementById('chart-wrapper-lq').style.display = 'flex';
+                document.getElementById('chart-wrapper-eq').style.gridColumn = 'span 2';
+
+                let eqTotal = 0, dtTotal = 0, eTotal = 0, nTotal = 0, lqTotal = 0, nlqTotal = 0;
+                
+                let aTable = extractedData["Master"]["Prop_Split"];
+                if (aTable) {
+                    aTable.rows.forEach(r => {
+                        let cat = String(r[0]).toUpperCase();
+                        if(cat.includes('EQUITY')) {
+                            eqTotal = cleanNum(r[1]) + cleanNum(r[2]);
+                            lqTotal += cleanNum(r[1]); nlqTotal += cleanNum(r[2]);
+                        }
+                        if(cat.includes('DEBT')) {
+                            dtTotal = cleanNum(r[1]) + cleanNum(r[2]);
+                            lqTotal += cleanNum(r[1]); nlqTotal += cleanNum(r[2]);
+                        }
+                    });
+                }
+                
+                dashCharts.eq = new Chart(document.getElementById('equity-debt-chart').getContext('2d'), {
+                    type: 'doughnut', data: { labels: ['Equity', 'Debt'], datasets: [{ data: [eqTotal, dtTotal], backgroundColor: ['#3b82f6', '#10b981'], borderWidth: 0 }] }, options: chartOpts
+                });
+
+                dashCharts.lq = new Chart(document.getElementById('liquidity-chart').getContext('2d'), {
+                    type: 'doughnut', data: { labels: ['Liquid', 'Non-Liquid'], datasets: [{ data: [lqTotal, nlqTotal], backgroundColor: ['#0ea5e9', '#f59e0b'], borderWidth: 0 }] }, options: chartOpts
+                });
+
+                let pTable = extractedData["Master"]["Person_Split"];
+                if (pTable) {
+                    pTable.rows.forEach(r => {
+                        if(String(r[0]).toUpperCase().includes('NIVEDHA')) nTotal = cleanNum(r[6]);
+                        if(String(r[0]).toUpperCase().includes('ESWAR')) eTotal = cleanNum(r[6]);
+                    });
+                }
+                dashCharts.ps = new Chart(document.getElementById('person-split-chart').getContext('2d'), {
+                    type: 'doughnut', data: { labels: ['Eswar', 'Nivedha'], datasets: [{ data: [eTotal, nTotal], backgroundColor: ['#3b82f6', '#8b5cf6'], borderWidth: 0 }] }, options: chartOpts
+                });
+            } else {
+                document.getElementById('chart-wrapper-ps').style.display = 'none';
+                document.getElementById('chart-wrapper-lq').style.display = 'none';
+                document.getElementById('chart-wrapper-eq').style.gridColumn = 'span 2';
+
+                let eqTotal = 0, dtTotal = 0;
+                let pTable = extractedData["Master"]["Person_Split"];
+                if (pTable) {
+                    let nRow = pTable.rows.find(r => String(r[0]).toUpperCase().includes('NIVEDHA'));
+                    if (nRow) {
+                        eqTotal = cleanNum(nRow[1]) + cleanNum(nRow[4]); // MF + Stocks
+                        dtTotal = cleanNum(nRow[2]) + cleanNum(nRow[3]); // Bonds + RD
+                    }
+                }
+                dashCharts.eq = new Chart(document.getElementById('equity-debt-chart').getContext('2d'), {
+                    type: 'doughnut', data: { labels: ["Nivedha's Equity", "Nivedha's Debt"], datasets: [{ data: [eqTotal, dtTotal], backgroundColor: ['#3b82f6', '#10b981'], borderWidth: 0 }] }, options: chartOpts
+                });
+            }
+        }
+
+        function getMappedSheet(cat) {
+            const map = {
+                "Mutual Fund - SIP": "Mutual Fund_SIP", "Mutual Fund - Lump sum": "Mutual Fund_LS",
+                "Fixed deposit": "FD", "GMB Insurance": "GMB Insurance", "National Pension Scheme": "NPS",
+                "Employee Provident Fund": "EPF", "Stocks": "Stocks", "Cryptocurrency": "Crypto",
+                "Public Provident Fund": "PPF", "Atal Pension Yojna": "APY", "Bonds": "Bonds", "Recurring deposit": "RD"
+            };
+            return map[cat] || cat;
+        }
+
+        function buildCard(name, inv, val, xirr, sheetsArrayStr) {
+            let sheetsJson = JSON.stringify(sheetsArrayStr).replace(/"/g, '&quot;');
+            let colorStyles = getAssetIconStyles(name);
+            return `
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex justify-between items-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors" onclick="openDetails('${name}', ${sheetsJson})">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-[11px] uppercase tracking-wide ${colorStyles}">
+                            ${name.substring(0,2)}
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm">${name}</h4>
+                            ${viewMode === 'combined' && inv ? `<p class="text-[11px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5">Inv: ₹${fmtC(inv)}</p>` : ''}
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold text-slate-800 dark:text-slate-100">₹${fmtC(val)}</p>
+                        ${xirr ? `<p class="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">${fmtP(xirr)}% XIRR</p>` : ''}
+                    </div>
+                </div>`;
+        }
+
+        // 4. Matrix Construction & Graphs
+        function openDetails(title, sheetsArray) {
+            switchTab('table-screen');
+            document.getElementById('table-title').innerText = title;
+            let container = document.getElementById('tables-container');
+            container.innerHTML = '';
+
+            if (title === 'Mutual Funds' || title === 'Mutual Fund - SIP' || title === 'Mutual Fund - Lump sum') {
+                renderMFTrendGraph(container);
+            }
+
+            sheetsArray.forEach(sheetName => {
+                let sData = extractedData[sheetName];
+                if(!sData) return;
+
+                for (let tName in sData) {
+                    let table = sData[tName];
+                    let isTopTable = table.headers.length === 0;
+
+                    if (viewMode === 'nivedha' && tName === 'MF_SIP_M') {
+                        table = { headers: table.headers, hideCols: table.hideCols, rows: table.rows.filter(r => String(r[0]).toUpperCase().startsWith('NIV')) };
+                    }
+                    if(table.rows.length === 0) continue;
+
+                    let renderRows = table.rows;
+                    if(viewMode === 'nivedha' && !isTopTable && tName !== 'MF_SIP_M') {
+                        let isExclusive = ["Bonds", "RD", "Stocks"].includes(sheetName);
+                        if(!isExclusive) renderRows = renderRows.filter(r => String(r[0]).toUpperCase().startsWith('NIV'));
+                    }
+                    if(renderRows.length === 0) continue;
+
+                    let renderHeaders = table.headers.filter((h, i) => !table.hideCols.includes(i));
+                    let tableId = `tbl-${sheetName}-${tName}`;
+                    let headHtml = renderHeaders.length > 0 ? `<thead><tr>${renderHeaders.map((h, hi) => `<th onclick="sortTable('${tableId}', ${hi})">${h} <span class="text-slate-400 dark:text-slate-500 text-xs font-normal ml-1">↕</span></th>`).join('')}</tr></thead>` : '';
+
+                    let tableClass = isTopTable ? "summary-table w-full text-left bg-indigo-50/50 dark:bg-indigo-900/20" : "data-table w-full text-left";
+                    let wrapperClass = isTopTable 
+                        ? "overflow-x-auto shadow-sm rounded-xl border border-indigo-100 dark:border-indigo-800 bg-indigo-50/30 dark:bg-indigo-900/10 transition-colors"
+                        : "overflow-x-auto shadow-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition-colors";
+
+                    let bodyHtml = renderRows.map(r => {
+                        let visibleCells = r.filter((c, i) => !table.hideCols.includes(i));
+                        let cellHtml = visibleCells.map((c, i) => {
+                            let originalIdx = 0, vIdx = 0;
+                            for(let k = 0; k < (isTopTable ? r.length : table.headers.length); k++) {
+                                if(!table.hideCols.includes(k)) { if(vIdx === i) { originalIdx = k; break; } vIdx++; }
+                            }
+                            return `<td>${formatExcelData(c, table.headers[originalIdx] || '', isTopTable, r[0], table.headers[originalIdx])}</td>`;
+                        }).join('');
+                        return `<tr>${cellHtml}</tr>`;
+                    }).join('');
+
+                    container.insertAdjacentHTML('beforeend', `
+                        <div class="mb-2">
+                            <h3 class="font-bold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 border-l-4 border-blue-500 dark:border-blue-400 pl-2">${tName.replace(/_/g, ' ')}</h3>
+                            <div class="${wrapperClass}">
+                                <table id="${tableId}" class="${tableClass}">${headHtml}<tbody>${bodyHtml}</tbody></table>
+                            </div>
+                        </div>`);
+                }
+            });
+        }
+
+        // --- MF Cumulative Growth Graph & Logic ---
+        function renderMFTrendGraph(container) {
+            globalMFPts = [];
+            
+            function processChartTable(sheetName, tableName, isNivOnly) {
+                let sData = extractedData[sheetName]?.[tableName];
+                if(!sData || sData.headers.length === 0) return;
+                
+                let h = sData.headers.map(x => String(x).toLowerCase());
+                let dateIdx = h.findIndex(x => x.includes('purchase date'));
+                let costIdx = h.findIndex(x => x.includes('value at cost'));
+                let valIdx = h.findIndex(x => x.includes('value now'));
+                
+                if(dateIdx < 0 || costIdx < 0 || valIdx < 0) return;
+                
+                sData.rows.forEach(r => {
+                    let tag = String(r[0] || '').toUpperCase();
+                    if(isNivOnly && !tag.startsWith('NIV')) return;
+                    
+                    let dVal = r[dateIdx], dObj = null;
+                    if(typeof dVal === 'number') dObj = new Date(Math.round((dVal - 25569) * 86400 * 1000));
+                    else if (typeof dVal === 'string') dObj = new Date(dVal);
+                    
+                    if(dObj && !isNaN(dObj.getTime())) {
+                        globalMFPts.push({ date: dObj, cost: cleanNum(r[costIdx]), val: cleanNum(r[valIdx]) });
+                    }
+                });
+            }
+
+            processChartTable('Mutual Fund_SIP', 'MF_SIP_List', viewMode === 'nivedha');
+            if(viewMode === 'combined') processChartTable('Mutual Fund_LS', 'MF_LS_M', false);
+
+            if(globalMFPts.length > 0) {
+                container.insertAdjacentHTML('beforeend', `
+                    <div class="mb-8 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest border-l-4 border-indigo-500 pl-2">Portfolio Cumulative Growth</h3>
+                            <div class="flex gap-2 items-center w-36">
+                                <span class="text-[10px] font-bold text-slate-400">6M</span>
+                                <input type="range" id="mf-time-slider" min="1" max="3" value="3" step="1" oninput="updateMFChart(this.value)">
+                                <span class="text-[10px] font-bold text-slate-400">ALL</span>
+                            </div>
+                        </div>
+                        <div class="w-full h-64 relative"><canvas id="chart-mf-cumulative"></canvas></div>
+                    </div>
+                `);
+                setTimeout(() => updateMFChart(3), 50);
+            }
+        }
+
+        function updateMFChart(rangeVal) {
+            let pts = globalMFPts.slice();
+            if(pts.length === 0) return;
+            
+            pts.sort((a,b) => a.date - b.date);
+            let fullSeries = [], rCost = 0, rVal = 0;
+            
+            pts.forEach(p => {
+                rCost += p.cost; rVal += p.val;
+                fullSeries.push({ date: p.date, label: p.date.toLocaleDateString('en-IN', {month:'short', year:'2-digit'}), cost: rCost, val: rVal });
+            });
+
+            let cutoff = new Date();
+            if(rangeVal == 1) cutoff.setMonth(cutoff.getMonth() - 6);
+            else if(rangeVal == 2) cutoff.setMonth(cutoff.getMonth() - 12);
+            else cutoff = new Date(0);
+
+            let filtered = fullSeries.filter(p => p.date >= cutoff);
+            if (filtered.length === 0 && fullSeries.length > 0) filtered = [fullSeries[fullSeries.length - 1]];
+
+            if(detailCharts.mf) detailCharts.mf.destroy();
+            detailCharts.mf = new Chart(document.getElementById('chart-mf-cumulative').getContext('2d'), {
+                type: 'line',
+                data: { 
+                    labels: filtered.map(x => x.label), 
+                    datasets: [
+                        { label: 'Value Now (₹)', data: filtered.map(x => x.val), borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 2, fill: true, tension: 0.1, pointRadius: 0 },
+                        { label: 'Value at Cost (₹)', data: filtered.map(x => x.cost), borderColor: '#6366f1', borderWidth: 2, borderDash: [5, 5], fill: false, tension: 0.1, pointRadius: 0 }
+                    ] 
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: {size: 11} } } },
+                    scales: { x: { ticks: { maxTicksLimit: 8 } } }
+                }
+            });
+        }
+
+        function sortTable(tableId, colIdx) {
+            let table = document.getElementById(tableId);
+            if (!table) return;
+            let tbody = table.querySelector('tbody');
+            let rows = Array.from(tbody.querySelectorAll('tr'));
+            let asc = table.getAttribute('data-sort-col') == colIdx && table.getAttribute('data-sort-dir') === 'asc' ? 'desc' : 'asc';
+            
+            table.setAttribute('data-sort-col', colIdx); table.setAttribute('data-sort-dir', asc);
+
+            rows.sort((a, b) => {
+                let valA = a.children[colIdx].innerText.trim().replace(/[₹,%]/g, '');
+                let valB = b.children[colIdx].innerText.trim().replace(/[₹,%]/g, '');
+                let numA = parseFloat(valA), numB = parseFloat(valB);
+                if (!isNaN(numA) && !isNaN(numB)) return asc === 'asc' ? numA - numB : numB - numA;
+                return asc === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            });
+            rows.forEach(r => tbody.appendChild(r));
+        }
+
+        // 5. Semantic Data Formatter
+        function formatExcelData(val, headerStr, isTopTable, rowLabelStr, headerName) {
+            let text = String(headerStr || '').toLowerCase() + " " + String(rowLabelStr || '').toLowerCase() + " " + String(headerName || '').toLowerCase();
+            let exactHeader = String(headerName || '').trim().toLowerCase();
+
+            if (exactHeader === '#' || exactHeader === 'no' || text.includes('total funds') || text.includes('funds:')) {
+                let num = parseInt(val); return isNaN(num) ? val : num;
+            }
+            if (exactHeader === 'wage month') {
+                let num = parseFloat(val);
+                if(num > 30000 && num < 60000) {
+                    let d = new Date(Math.round((num - 25569) * 86400 * 1000));
+                    return d.toLocaleString('en-US', { month: 'short' }) + '-' + d.toLocaleString('en-US', { year: '2-digit' });
+                } return val;
+            }
+            if (exactHeader === 'interest' && text.includes('fd')) {
+                 let num = parseFloat(val);
+                 if(!isNaN(num)) return (num < 1 ? (num * 100).toFixed(2) : num.toFixed(2)) + '%';
+            }
+            if (exactHeader === 'invested for') {
+                let num = parseFloat(val); return isNaN(num) ? val : num.toFixed(2) + ' yrs';
+            }
+
+            let num = parseFloat(val);
+            if(isNaN(num) || (typeof val === 'string' && val.trim() === '')) return val || '-';
+            
+            if(num > 30000 && num < 60000 && (text.includes('date') || text.includes('sold on'))) {
+                return new Date(Math.round((num - 25569) * 86400 * 1000)).toLocaleDateString('en-IN');
+            }
+            if(text.includes('%') || text.includes('return') || text.includes('xirr') || text.includes('rate') || text.includes('proportion')) {
+                return fmtP(num) + '%';
+            }
+            
+            let isMonetary = text.includes('value') || text.includes('invested') || text.includes('investment') || text.includes('amount') || text.includes('buy') || text.includes('price') || text.includes('total') || text.includes('sip') || text.includes('ls') || text.includes('payment') || text.includes('cash') || exactHeader === 'increase' || exactHeader === 'interest';
+            if (isMonetary) {
+                if(text.includes('code') || text.includes('folio') || text.includes('isin')) return val; 
+                return '₹' + fmtC(num);
+            }
+            return num % 1 === 0 ? num : parseFloat(num.toFixed(2));
+        }
+
+        // Navigation
+        function switchTab(tab) {
+            ['master-screen', 'table-screen', 'goal-screen'].forEach(t => {
+                document.getElementById(t).classList.add('hidden'); document.getElementById(t).classList.remove('flex');
+            });
+            let el = document.getElementById(tab);
+            el.classList.remove('hidden'); if(tab === 'table-screen') el.classList.add('flex');
+
+            document.getElementById('nav-dash').className = (tab === 'master-screen' || tab === 'table-screen') ? "flex flex-col items-center text-blue-600 dark:text-blue-400 font-bold active:scale-95 transition" : "flex flex-col items-center text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 active:scale-95 transition";
+            document.getElementById('nav-goal').className = tab === 'goal-screen' ? "flex flex-col items-center text-blue-600 dark:text-blue-400 font-bold active:scale-95 transition" : "flex flex-col items-center text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 active:scale-95 transition";
+        }
+
+        // 6. Goal Planner UI Logic & Insights
+        function sync(id, val) { document.getElementById('in-' + id).value = val; document.getElementById('sl-' + id).value = val; calcGoal(); }
+
+        function calcGoal() {
+            let target = cleanNum(document.getElementById('in-target').value), corpus = cleanNum(document.getElementById('in-corpus').value);
+            let sip = cleanNum(document.getElementById('in-sip').value), rate = cleanNum(document.getElementById('in-rate').value) / 100, stepup = cleanNum(document.getElementById('in-stepup').value) / 100;
+
+            if (target <= corpus) { document.getElementById('goal-result').innerText = "Reached!"; document.getElementById('goal-date').innerText = "Done"; return; }
+            let m = 0; let cSip = sip; let mRate = rate / 12;
+
+            while (corpus < target && m < 1200) {
+                corpus = corpus * (1 + mRate) + cSip;
+                m++; if (m % 12 === 0) cSip *= (1 + stepup);
+            }
+
+            let y = Math.floor(m / 12); let mRem = m % 12;
+            document.getElementById('goal-result').innerText = y > 0 ? `${y} Yr, ${mRem} Mo` : `${mRem} Mos`;
+            let d = new Date(); d.setMonth(d.getMonth() + m);
+            document.getElementById('goal-date').innerText = "Est. " + d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+        }
+
+        function calculatePortfolioStats() {
+            let now = new Date();
+            let prevMonthStr = (now.getMonth() === 0 ? 11 : now.getMonth() - 1) + "-" + (now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear());
+            let currentYear = now.getFullYear();
+
+            let prevMonthInvested = 0, ytdInvested = 0, priorInvested = 0;
+            let inv3M = 0, inv6M = 0, inv12M = 0;
+
+            let date3M = new Date(); date3M.setMonth(now.getMonth() - 3);
+            let date6M = new Date(); date6M.setMonth(now.getMonth() - 6);
+            let date12M = new Date(); date12M.setMonth(now.getMonth() - 12);
+
+            for (let sheetName in extractedData) {
+                let sheet = extractedData[sheetName];
+                for (let tableName in sheet) {
+                    let table = sheet[tableName];
+                    if (table.headers.length === 0) continue; 
+
+                    let h = table.headers.map(x => String(x).toLowerCase());
+                    let dateIdx = h.findIndex(x => x.includes('date') && !x.includes('nav') && !x.includes('maturity'));
+                    let amtIdx = h.findIndex(x => x === 'buy value' || x === 'value at cost' || x === 'deposit value' || x === 'monthly contribution' || x === 'investment' || x === 'amount invested' || x === 'amount' || (x === 'value' && sheetName === 'Bonds'));
+                    
+                    if (dateIdx > -1 && amtIdx > -1) {
+                        table.rows.forEach(r => {
+                            let dVal = r[dateIdx], amt = cleanNum(r[amtIdx]);
+                            if (amt > 0 && dVal) {
+                                let dObj = null;
+                                if(typeof dVal === 'number') dObj = new Date(Math.round((dVal - 25569) * 86400 * 1000));
+                                else if (typeof dVal === 'string') dObj = new Date(dVal);
+
+                                if (dObj && !isNaN(dObj.getTime())) {
+                                    let mStr = dObj.getMonth() + "-" + dObj.getFullYear();
+                                    if (mStr === prevMonthStr) prevMonthInvested += amt;
+                                    
+                                    if (dObj.getFullYear() === currentYear) ytdInvested += amt;
+                                    else if (dObj.getFullYear() < currentYear) priorInvested += amt;
+
+                                    if (dObj >= date3M) inv3M += amt;
+                                    if (dObj >= date6M) inv6M += amt;
+                                    if (dObj >= date12M) inv12M += amt;
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+
+            let ytdPercent = priorInvested > 0 ? (ytdInvested / priorInvested) * 100 : 0;
+            document.getElementById('note-xirr').innerText = document.getElementById('dash-xirr').innerText;
+            document.getElementById('note-prev-month').innerText = "₹" + fmtC(prevMonthInvested);
+            document.getElementById('note-3m').innerText = "₹" + fmtC(inv3M / 3);
+            document.getElementById('note-6m').innerText = "₹" + fmtC(inv6M / 6);
+            document.getElementById('note-12m').innerText = "₹" + fmtC(inv12M / 12);
+            document.getElementById('note-ytd').innerText = ytdPercent.toFixed(1) + "%"; 
+        }
+    </script>
+</body>
+</html>
