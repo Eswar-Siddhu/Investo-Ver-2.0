@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Investo Family Portfolio</title>
-    <!-- Tailwind CSS with Dark Mode Config -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class', }
@@ -32,24 +31,23 @@
         .dark .data-table th:hover { background-color: #334155; color: #e2e8f0; }
         .dark .data-table td { color: #cbd5e1; border-bottom-color: #334155; }
         .dark .data-table tr:hover { background-color: #334155; }
-        
         .dark .summary-table td { border-bottom: 1px solid rgba(99, 102, 241, 0.25); color: #c7d2fe; }
 
         input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #2563eb; cursor: pointer; margin-top: -8px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #e2e8f0; border-radius: 4px; }
         .dark input[type=range]::-webkit-slider-runnable-track { background: #475569; }
+        
+        .blur-data { filter: blur(4px); opacity: 0.7; user-select: none; pointer-events: none; }
     </style>
 </head>
 <body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 antialiased pb-24 transition-colors duration-300">
 
-    <!-- Dark Mode Toggle Button -->
     <button onclick="toggleDarkMode()" class="fixed top-4 right-4 z-[60] p-2.5 rounded-full bg-white/50 backdrop-blur-md shadow-sm border border-white/40 text-slate-700 dark:text-slate-200 dark:bg-slate-800/60 dark:border-slate-700 hover:scale-105 active:scale-95 transition cursor-pointer">
         <svg id="icon-sun" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
         <svg id="icon-moon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
     </button>
 
-    <!-- Screen 0: Upload -->
     <div id="upload-screen" class="flex flex-col items-center justify-center min-h-screen p-6 fade-in">
         <div class="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl w-full max-w-sm text-center border border-slate-100 dark:border-slate-700 transition-colors">
             <h1 class="text-4xl font-extrabold mb-2 text-blue-700 dark:text-blue-500 tracking-tight">Investo</h1>
@@ -63,7 +61,6 @@
         </div>
     </div>
 
-    <!-- Navigation Bar -->
     <nav id="bottom-nav" class="hidden fixed bottom-0 w-full bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-around p-3 z-50 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] transition-colors">
         <button onclick="switchTab('master-screen')" id="nav-dash" class="flex flex-col items-center text-blue-600 dark:text-blue-400 font-bold active:scale-95 transition">
             <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
@@ -75,13 +72,17 @@
         </button>
     </nav>
 
-    <!-- Screen 1: Dashboard -->
     <div id="master-screen" class="hidden fade-in">
         <div class="bg-blue-700 dark:bg-blue-900 text-white px-6 pt-10 pb-6 rounded-b-3xl shadow-lg relative transition-colors">
             <div class="flex flex-col">
                 <h2 class="text-2xl font-extrabold tracking-tight" id="dash-title">Overall Portfolio</h2>
                 <p class="text-blue-200 dark:text-blue-300 text-sm mt-3 font-medium">Total Net Worth</p>
-                <h3 class="text-4xl font-extrabold mt-0.5 tracking-tight">₹<span id="dash-worth">0</span></h3>
+                <div class="flex items-center gap-3 mt-0.5">
+                    <h3 class="text-4xl font-extrabold tracking-tight">₹<span id="dash-worth">0</span></h3>
+                    <button onclick="togglePrivacy()" class="text-blue-300 hover:text-white dark:text-blue-400 dark:hover:text-white transition cursor-pointer">
+                        <svg id="icon-eye" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                    </button>
+                </div>
                 
                 <div class="mt-4">
                     <div class="bg-blue-800 dark:bg-blue-950 rounded-lg p-1 inline-flex shadow-inner">
@@ -125,7 +126,6 @@
         <p id="file-date" class="text-center text-[10px] font-semibold text-slate-400 dark:text-slate-500 mt-8 mb-4"></p>
     </div>
 
-    <!-- Screen 2: Data Tables -->
     <div id="table-screen" class="hidden min-h-screen bg-slate-50 dark:bg-slate-900 flex-col fade-in transition-colors">
         <div class="flex items-center p-4 bg-white dark:bg-slate-800 shadow-sm sticky top-0 z-20 border-b border-slate-100 dark:border-slate-700 transition-colors">
             <button onclick="switchTab('master-screen')" class="p-2 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-600 dark:text-slate-300 active:bg-slate-200 dark:active:bg-slate-600 transition">
@@ -136,7 +136,6 @@
         <div id="tables-container" class="px-4 mt-5 flex flex-col gap-8 pb-10"></div>
     </div>
 
-    <!-- Screen 3: Goal Planner -->
     <div id="goal-screen" class="hidden fade-in min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors">
         <div class="bg-white dark:bg-slate-800 p-6 shadow-sm sticky top-0 z-10 border-b border-slate-100 dark:border-slate-700 transition-colors">
             <h2 class="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight mt-2">Goal Planner</h2>
@@ -208,10 +207,41 @@
     </div>
 
     <script>
-        // Light Mode Default, Dark Mode toggler
+        // State & Utility
+        let isPrivacyMode = false;
         function toggleDarkMode() { document.documentElement.classList.toggle('dark'); }
 
-        // Asset Styling Map
+        function togglePrivacy() {
+            isPrivacyMode = !isPrivacyMode;
+            let eyeIcon = document.getElementById('icon-eye');
+            if (isPrivacyMode) {
+                eyeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>`;
+                document.getElementById('dash-worth').classList.add('blur-data');
+                document.getElementById('dash-invested').classList.add('blur-data');
+                document.querySelectorAll('.val-mask').forEach(el => el.classList.add('blur-data'));
+            } else {
+                eyeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>`;
+                document.getElementById('dash-worth').classList.remove('blur-data');
+                document.getElementById('dash-invested').classList.remove('blur-data');
+                document.querySelectorAll('.val-mask').forEach(el => el.classList.remove('blur-data'));
+            }
+        }
+
+        // Date formatters
+        function toDDMMMYY(dObj) {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            let d = String(dObj.getDate()).padStart(2, '0');
+            let m = months[dObj.getMonth()];
+            let y = String(dObj.getFullYear()).slice(-2);
+            return `${d}-${m}-${y}`;
+        }
+        function toMMMYY(dObj) {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            let m = months[dObj.getMonth()];
+            let y = String(dObj.getFullYear()).slice(-2);
+            return `${m}-${y}`;
+        }
+
         function getAssetIconStyles(name) {
             let n = name.toLowerCase();
             if(n.includes('fund')) return 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400';
@@ -233,7 +263,6 @@
             return '-';
         }
 
-        // 1. Data Dictionary Map
         const tableDefs = [
             { s: "Master", n: "Master", c: "B16", r: 14, col: 6, h: true },
             { s: "Master", n: "Person_Split", c: "S8", r: 4, col: 8, h: true },
@@ -275,13 +304,6 @@
         let detailCharts = {};
         let globalMFPts = [];
 
-        function getCoords(cellId) {
-            let match = cellId.match(/([a-zA-Z]+)(\d+)/);
-            let colStr = match[1].toUpperCase(); let idx = 0;
-            for(let i=0; i<colStr.length; i++){ idx = idx * 26 + (colStr.charCodeAt(i) - 64); }
-            return { c: idx - 1, r: parseInt(match[2]) - 1 };
-        }
-
         function cleanNum(v) { return (isNaN(parseFloat(v)) || v === "") ? 0 : parseFloat(v); }
         function fmtC(n) { return Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
         function fmtP(n) { return (Number(n) * 100).toFixed(2); }
@@ -299,7 +321,7 @@
             } return 0;
         }
 
-        // 2. High-Speed File Upload & Extraction
+        // 2. High-Speed File Upload
         document.getElementById('file-upload').addEventListener('change', function(e) {
             let file = e.target.files[0];
             if (!file) return;
@@ -318,7 +340,12 @@
 
                     let sheetDefs = tableDefs.filter(d => d.s === sheet);
                     sheetDefs.forEach(def => {
-                        let coord = getCoords(def.c); let limit = def.r;
+                        let match = def.c.match(/([a-zA-Z]+)(\d+)/);
+                        let colStr = match[1].toUpperCase(); let idx = 0;
+                        for(let i=0; i<colStr.length; i++){ idx = idx * 26 + (colStr.charCodeAt(i) - 64); }
+                        let coord = { c: idx - 1, r: parseInt(match[2]) - 1 };
+                        let limit = def.r;
+
                         if (limit === -1) {
                             limit = 0;
                             while(coord.r + limit < matrix.length) {
@@ -341,13 +368,10 @@
 
                         extractedData[sheet][def.n] = { headers, rows, hideCols: [] };
                         
-                        // Strict Table Configurations & Append Bank Data
                         if(def.n === 'MF_SIP_M' || def.n === 'MF_LS_M') {
                             extractedData[sheet][def.n].hideCols = [0];
                             extractedData[sheet][def.n].headers.push('Bank');
-                            extractedData[sheet][def.n].rows.forEach(r => {
-                                r.push(mapBankName(r[0]));
-                            });
+                            extractedData[sheet][def.n].rows.forEach(r => r.push(mapBankName(r[0])));
                         }
                         
                         if(def.n === 'Stock_M') {
@@ -381,6 +405,7 @@
             
             document.getElementById('dash-title').innerText = mode === 'combined' ? "Overall Portfolio" : "Nivedha's Portfolio";
             renderView();
+            if(isPrivacyMode) document.querySelectorAll('.val-mask').forEach(el => el.classList.add('blur-data'));
         }
 
         function renderView() {
@@ -413,7 +438,6 @@
                 if(nRow) {
                     worth = cleanNum(nRow[6]); xirr = cleanNum(nRow[7]);
 
-                    // Calculate Nivedha Invested Value
                     let nInvSum = 0;
                     nInvSum += extractSummInv('Bonds', 'Bond');
                     nInvSum += extractSummInv('RD', 'RD');
@@ -584,11 +608,11 @@
                         </div>
                         <div>
                             <h4 class="font-bold text-slate-800 dark:text-slate-100 text-sm">${name}</h4>
-                            ${inv ? `<p class="text-[11px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5">Inv: ₹${fmtC(inv)}</p>` : ''}
+                            ${inv ? `<p class="text-[11px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5 val-mask">Inv: ₹${fmtC(inv)}</p>` : ''}
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="font-bold text-slate-800 dark:text-slate-100">₹${fmtC(val)}</p>
+                        <p class="font-bold text-slate-800 dark:text-slate-100 val-mask">₹${fmtC(val)}</p>
                         ${xirr ? `<p class="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">${fmtP(xirr)}% XIRR</p>` : ''}
                     </div>
                 </div>`;
@@ -661,7 +685,8 @@
                             for(let k = 0; k < (isTopTable ? r.length : table.headers.length); k++) {
                                 if(!table.hideCols.includes(k)) { if(vIdx === i) { originalIdx = k; break; } vIdx++; }
                             }
-                            return `<td>${formatExcelData(c, table.headers[originalIdx] || '', isTopTable, r[0], table.headers[originalIdx])}</td>`;
+                            let vForm = formatExcelData(c, table.headers[originalIdx] || '', isTopTable, r[0], table.headers[originalIdx]);
+                            return `<td class="${isTopTable && i===1 ? 'val-mask' : ''}">${vForm}</td>`;
                         }).join('');
                         return `<tr>${cellHtml}</tr>`;
                     }).join('');
@@ -675,6 +700,7 @@
                         </div>`);
                 }
             });
+            if(isPrivacyMode) document.querySelectorAll('.val-mask').forEach(el => el.classList.add('blur-data'));
         }
 
         // --- MF Cumulative Growth Graph & Logic ---
@@ -736,7 +762,7 @@
             
             pts.forEach(p => {
                 rCost += p.cost; rVal += p.val;
-                fullSeries.push({ date: p.date, label: p.date.toLocaleDateString('en-IN', {month:'short', year:'2-digit'}), cost: rCost, val: rVal });
+                fullSeries.push({ date: p.date, label: toDDMMMYY(p.date), cost: rCost, val: rVal });
             });
 
             let cutoff = new Date();
@@ -789,15 +815,18 @@
             let text = String(headerStr || '').toLowerCase() + " " + String(rowLabelStr || '').toLowerCase() + " " + String(headerName || '').toLowerCase();
             let exactHeader = String(headerName || '').trim().toLowerCase();
 
+            // Strict Overrides to prevent stripping strings
+            if (exactHeader === 'max hold' || exactHeader === 'name' || exactHeader === 'stock' || exactHeader === 'fund name' || exactHeader === 'fund house' || text.includes('code') || text.includes('folio') || text.includes('isin') || text.includes('bank') || (typeof val === 'string' && isNaN(Number(val.charAt(0))) && !text.includes('date'))) {
+                return val || '-';
+            }
+
             if (exactHeader === '#' || exactHeader === 'no' || text.includes('total funds') || text.includes('funds:')) {
                 let num = parseInt(val); return isNaN(num) ? val : num;
             }
             if (exactHeader === 'wage month') {
                 let num = parseFloat(val);
-                if(num > 30000 && num < 60000) {
-                    let d = new Date(Math.round((num - 25569) * 86400 * 1000));
-                    return d.toLocaleString('en-US', { month: 'short' }) + '-' + d.toLocaleString('en-US', { year: '2-digit' });
-                } return val;
+                if(num > 30000 && num < 60000) return toMMMYY(new Date(Math.round((num - 25569) * 86400 * 1000)));
+                return val;
             }
             if (exactHeader === 'interest' && text.includes('fd')) {
                  let num = parseFloat(val);
@@ -811,7 +840,7 @@
             if(isNaN(num) || (typeof val === 'string' && val.trim() === '')) return val || '-';
             
             if(num > 30000 && num < 60000 && (text.includes('date') || text.includes('sold on'))) {
-                return new Date(Math.round((num - 25569) * 86400 * 1000)).toLocaleDateString('en-IN');
+                return toDDMMMYY(new Date(Math.round((num - 25569) * 86400 * 1000)));
             }
             if(text.includes('%') || text.includes('return') || text.includes('xirr') || text.includes('rate') || text.includes('proportion')) {
                 return fmtP(num) + '%';
@@ -819,7 +848,6 @@
             
             let isMonetary = text.includes('value') || text.includes('invested') || text.includes('investment') || text.includes('amount') || text.includes('buy') || text.includes('price') || text.includes('total') || text.includes('sip') || text.includes('ls') || text.includes('payment') || text.includes('cash') || exactHeader === 'increase' || exactHeader === 'interest';
             if (isMonetary) {
-                if(text.includes('code') || text.includes('folio') || text.includes('isin') || text.includes('bank')) return val; 
                 return '₹' + fmtC(num);
             }
             return num % 1 === 0 ? num : parseFloat(num.toFixed(2));
